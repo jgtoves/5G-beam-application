@@ -103,7 +103,11 @@ def update_ui(n):
     }
     
     # 3. Detection Logic
-    rsrp = live_stats["current_rsrp"]
+    # Safely handle the RSRP value even if it's sent as a string like "-98"
+try:
+    rsrp = int(data.get('rsrp', 0))
+except (ValueError, TypeError):
+    rsrp = 0  # Fallback if the data is garbled
     if rsrp < -98: # Threshold: If signal is very weak (blocked)
         msg, color, bg = "⚠️ PERSON DETECTED ⚠️", "white", "red"
     else:
