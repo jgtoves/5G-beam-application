@@ -117,9 +117,9 @@ def update_ui(n):
         rsrp = 0  # Fallback if the data is garbled
 
     # --- Move this OUT of the except block (de-indent) ---
-    if rsrp < -98: 
+if rsrp < -98: 
         msg, color, bg = "⚠️ PERSON DETECTED ⚠️", "white", "red"
-    else:
+else:
         msg, color, bg = "✅ ROOM CLEAR", "#00ff00", "transparent"
         
     status_style = {
