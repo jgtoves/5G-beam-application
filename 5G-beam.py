@@ -90,6 +90,19 @@ def update_ui(n):
     angle = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
     needle_style = {'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center', 
                     'width': '4px', 'height': '40px', 'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%'}
+
+    # Inside update_ui(n)
+    rsrp_current = live_stats["current_rsrp"]
+    baseline = -90  # Adjust based on your room's average signal
+
+# If signal drops by more than 5dBm, it's likely a human body
+    if rsrp_current < (baseline - 5):
+    status_text = "PERSON DETECTED"
+    status_color = "red"
+    
+else:
+    status_text = "CLEAR"
+    status_color = "green"
     
     return fig, needle_style
 
