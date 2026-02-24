@@ -91,6 +91,12 @@ def update_ui(n):
     needle_style = {'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center', 
                     'width': '4px', 'height': '40px', 'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%'}
 
+    
+    return fig, needle_style
+
+if __name__ == '__main__':
+    app.run_server(debug=True, port=5000)
+
 # Inside update_ui(n)
 rsrp_current = live_stats["current_rsrp"]
 baseline = -90  # Adjust based on your room's average signal
@@ -102,9 +108,3 @@ if rsrp_current < (baseline - 5):
 else:
     status_text = "CLEAR"
     status_color = "green"
-    
-    return fig, needle_style
-
-if __name__ == '__main__':
-    app.run_server(debug=True, port=5000)
-
