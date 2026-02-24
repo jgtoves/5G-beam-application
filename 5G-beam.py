@@ -114,3 +114,9 @@ def update_ui(n):
     
     # IMPORTANT: Return all 4 outputs in the exact order of the @app.callback header
     return fig, needle_style, status_text, status_style
+
+app.run(debug=True, host='0.0.0.0', port=5000)
+
+if __name__ == '__main__':
+    # use_reloader=False prevents Termux from hanging on the "restart"
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
