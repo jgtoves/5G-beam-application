@@ -6,41 +6,29 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import math
 
-# --- CONFIGURATION: MANUALLY ADD YOUR 10 TOWERS ---
-# You can get these Lat/Lon from CellMapper.net for Dededo
-# --- TOWER DATABASE: DEDEDO VILLAGE CLUSTERS ---
-# Note: RSRP (Signal) will be strongest when your phone faces these coordinates.
+# --- TOWER DATABASE ---
 TOWER_DATABASE = {
     "GTA_Micronesia_Mall": {"lat": 13.5152, "lon": 144.8155, "name": "Mall Main Hub"},
-    "GTA_Wusstig_Rd": {"lat": 13.5481, "lon": 144.8512, "name": "North Dededo"},
     "GTA_Macheche": {"lat": 13.5225, "lon": 144.8285, "name": "Macheche/Harmon Loop"},
-    "ITE_Harmon_Industrial": {"lat": 13.5095, "lon": 144.8050, "name": "Harmon Data Center"},
-    "GTA_Liguan_Terrace": {"lat": 13.5280, "lon": 144.8210, "name": "Liguan Residential"},
-    "GTA_Y_Sengsong": {"lat": 13.5410, "lon": 144.8320, "name": "Y-Sengsong Rd Site"},
-    "GTA_Marine_Drive_North": {"lat": 13.5350, "lon": 144.8450, "name": "Marine Drive Corridor"},
-    "GTA_Astumbo": {"lat": 13.5520, "lon": 144.8180, "name": "Astumbo District"},
-    "ITE_Dededo_Village": {"lat": 13.5180, "lon": 144.8390, "name": "Central Dededo Hub"},
-    "GTA_Chalan_Lagu": {"lat": 13.5590, "lon": 144.8350, "name": "North Coastal Site"}
+    "GTA_Wusstig_Rd": {"lat": 13.5481, "lon": 144.8512, "name": "North Dededo"}
 }
 
 server = Flask(__name__)
 CORS(server)
 app = dash.Dash(__name__, server=server)
 
-# Global storage for live data
-live_stats = {"current_rsrp": -100, "active_tower": "Searching...", "history": []}
+# Global storage
+live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "history": []}
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
 @server.route('/update', methods=['POST'])
 def update_data():
     data = request.json
     live_stats["current_rsrp"] = data.get("rsrp", -110)
-    live_stats["active_tower"] = data.get("tower_id", "Unknown")
     live_stats["history"].append(live_stats["current_rsrp"])
-    if len(live_stats["history"]) > 100: live_stats["history"].pop(0)
+    if len(live_stats["history"]) > 50: live_stats["history"].pop(0)
     return jsonify({"status": "success"})
 
-# --- MATH: CALCULATE DIRECTION TO TOWER ---
 def calculate_bearing(lat1, lon1, lat2, lon2):
     dLon = math.radians(lon2 - lon1)
     y = math.sin(dLon) * math.cos(math.radians(lat2))
@@ -48,83 +36,83 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
         math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
     return (math.degrees(math.atan2(y, x)) + 360) % 360
 
-# --- DASHBOARD LAYOUT ---
+# --- FULL DASHBOARD LAYOUT ---
 app.layout = html.Div([
-    html.H2("Guam 5G Person-Detection Radar", style={'textAlign': 'center'}),
-    # Add this inside the app.layout = html.Div([ ... ]) block
-    html.Div(id='status-display', style={
-        'textAlign': 'center', 
-        'fontSize': '30px', 
-        'marginTop': '20px',
-        'fontWeight': 'bold'
-    }),
+    html.H2("Guam 5G Person-Detection Radar", style={'textAlign': 'center', 'color': '#00ff00'}),
+    
     html.Div([
+        # LEFT SIDE: COMPASS
         html.Div([
-            html.H4("Tower Compass"),
-            # Inside your app.layout = html.Div([ ... ])
-html.Div(id='compass-needle', style={
-    'width': '100px', 'height': '100px', 'borderRadius': '50%',
-    'border': '2px solid white', 'margin': 'auto', 'position': 'relative'
-}, children=[
-    html.Div(id='needle-rotation', style={ # <--- THIS ID MUST BE HERE
-        'width': '4px', 'height': '40px', 'backgroundColor': 'red',
-        'position': 'absolute', 'left': '48%', 'top': '10%',
-        'transformOrigin': 'bottom center'
-    })
-])
+            html.H4("Tower Direction", style={'color': 'white'}),
+            html.Div(id='compass-needle', style={
+                'width': '120px', 'height': '120px', 'borderRadius': '50%',
+                'border': '3px solid #555', 'margin': 'auto', 'position': 'relative',
+                'backgroundColor': '#222'
             }, children=[
-                html.Div(style={
-                    'width': '4px', 'height': '40px', 'backgroundColor': 'red',
+                html.Div(id='needle-rotation', style={ # <--- ID MUST BE HERE
+                    'width': '4px', 'height': '50px', 'backgroundColor': 'red',
                     'position': 'absolute', 'left': '48%', 'top': '10%',
-                    'transformOrigin': 'bottom center', 'id': 'needle-rotation'
+                    'transformOrigin': 'bottom center', 'transition': 'transform 0.5s'
                 })
             ])
-        ], style={'width': '30%', 'display': 'inline-block', 'textAlign': 'center'}),
+        ], style={'width': '30%', 'display': 'inline-block', 'textAlign': 'center', 'verticalAlign': 'top'}),
         
+        # RIGHT SIDE: GRAPH
         html.Div([
-            html.H4("Signal Movement Tracker"),
-            dcc.Graph(id='signal-graph', animate=True)
+            dcc.Graph(id='signal-graph', animate=True, config={'displayModeBar': False})
         ], style={'width': '65%', 'display': 'inline-block'})
     ]),
     
-    dcc.Interval(id='refresh', interval=500) # 0.5 second updates
+    # BOTTOM: DETECTION STATUS
+    html.Div(id='status-display', style={
+        'textAlign': 'center', 'fontSize': '45px', 'marginTop': '40px', 
+        'padding': '20px', 'borderRadius': '10px', 'fontWeight': 'bold'
+    }),
+    
+    dcc.Interval(id='refresh', interval=500)
+], style={'backgroundColor': '#111', 'padding': '20px', 'height': '100vh', 'fontFamily': 'sans-serif'})
 
-])
-
+# --- FULL CALLBACK ---
 @app.callback(
     [Output('signal-graph', 'figure'), 
      Output('needle-rotation', 'style'),
      Output('status-display', 'children'),
-     Output('status-display', 'style')], # We'll update the color too!
+     Output('status-display', 'style')],
     [Input('refresh', 'n_intervals')]
 )
 def update_ui(n):
-    # 1. Graph Logic
-    fig = go.Figure(go.Scatter(y=live_stats["history"], mode='lines+markers', line=dict(color='#00ff00')))
-    fig.update_layout(template="plotly_dark", yaxis=dict(range=[-120, -60]), title="RSRP Intensity")
+    # 1. Update Graph
+    history_data = list(live_stats["history"])
+    fig = go.Figure(go.Scatter(y=history_data, mode='lines+markers', line=dict(color='#00ff00', width=3)))
+    fig.update_layout(
+        template="plotly_dark", 
+        yaxis=dict(range=[-120, -60], gridcolor='#333'),
+        xaxis=dict(showgrid=False),
+        margin=dict(l=20, r=20, t=10, b=20),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
     
-    # 2. Compass Logic
-    target = TOWER_DATABASE.get("GTA_Micronesia_Mall") 
-    angle = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
-    needle_style = {'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center', 
-                    'width': '4px', 'height': '40px', 'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%'}
+    # 2. Update Compass
+    tower = TOWER_DATABASE[live_stats["active_tower"]]
+    angle = calculate_bearing(user_location['lat'], user_location['lon'], tower['lat'], tower['lon'])
+    needle_style = {
+        'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center',
+        'width': '4px', 'height': '50px', 'backgroundColor': 'red', 
+        'position': 'absolute', 'left': '48%', 'top': '10%'
+    }
     
-    # 3. THE DETECTION LOGIC (The part you added)
-    rsrp_current = live_stats["current_rsrp"]
-    baseline = -90  # Your "empty room" signal strength
-    
-    if rsrp_current < (baseline - 5): # If signal drops by 5dBm
-        status_text = "⚠️ PERSON DETECTED ⚠️"
-        status_style = {'color': 'red', 'textAlign': 'center', 'fontSize': '30px'}
+    # 3. Detection Logic
+    rsrp = live_stats["current_rsrp"]
+    if rsrp < -98: # Threshold: If signal is very weak (blocked)
+        msg, color, bg = "⚠️ PERSON DETECTED ⚠️", "white", "red"
     else:
-        status_text = "✅ ROOM CLEAR"
-        status_style = {'color': 'green', 'textAlign': 'center', 'fontSize': '30px'}
+        msg, color, bg = "✅ ROOM CLEAR", "#00ff00", "transparent"
+        
+    status_style = {'color': color, 'backgroundColor': bg, 'textAlign': 'center', 'fontSize': '45px'}
     
-    # IMPORTANT: Return all 4 outputs in the exact order of the @app.callback header
-    return fig, needle_style, status_text, status_style
-
-app.run(debug=True, host='0.0.0.0', port=5000)
+    return fig, needle_style, msg, status_style
 
 if __name__ == '__main__':
-    # use_reloader=False prevents Termux from hanging on the "restart"
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    # host='0.0.0.0' allows external devices (like your phone) to connect
+    app.run(host='0.0.0.0', port=5000, debug=True)
