@@ -95,7 +95,7 @@ def update_ui(n):
     return fig, needle_style
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
 
 # Inside update_ui(n)
 rsrp_current = live_stats["current_rsrp"]
