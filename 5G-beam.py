@@ -61,9 +61,17 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             html.H4("Tower Compass"),
-            html.Div(id='compass-needle', style={
-                'width': '100px', 'height': '100px', 'borderRadius': '50%',
-                'border': '2px solid white', 'margin': 'auto', 'position': 'relative'
+            # Inside your app.layout = html.Div([ ... ])
+html.Div(id='compass-needle', style={
+    'width': '100px', 'height': '100px', 'borderRadius': '50%',
+    'border': '2px solid white', 'margin': 'auto', 'position': 'relative'
+}, children=[
+    html.Div(id='needle-rotation', style={ # <--- THIS ID MUST BE HERE
+        'width': '4px', 'height': '40px', 'backgroundColor': 'red',
+        'position': 'absolute', 'left': '48%', 'top': '10%',
+        'transformOrigin': 'bottom center'
+    })
+])
             }, children=[
                 html.Div(style={
                     'width': '4px', 'height': '40px', 'backgroundColor': 'red',
