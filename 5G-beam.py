@@ -8,10 +8,19 @@ import math
 
 # --- CONFIGURATION: MANUALLY ADD YOUR 10 TOWERS ---
 # You can get these Lat/Lon from CellMapper.net for Dededo
+# --- TOWER DATABASE: DEDEDO VILLAGE CLUSTERS ---
+# Note: RSRP (Signal) will be strongest when your phone faces these coordinates.
 TOWER_DATABASE = {
-    "GTA_Dededo_1": {"lat": 13.523, "lon": 144.828, "name": "Macheche Tower"},
-    "GTA_Dededo_2": {"lat": 13.545, "lon": 144.842, "name": "Yigo Border Tower"},
-    # Add up to 10 here...
+    "GTA_Micronesia_Mall": {"lat": 13.5152, "lon": 144.8155, "name": "Mall Main Hub"},
+    "GTA_Wusstig_Rd": {"lat": 13.5481, "lon": 144.8512, "name": "North Dededo"},
+    "GTA_Macheche": {"lat": 13.5225, "lon": 144.8285, "name": "Macheche/Harmon Loop"},
+    "ITE_Harmon_Industrial": {"lat": 13.5095, "lon": 144.8050, "name": "Harmon Data Center"},
+    "GTA_Liguan_Terrace": {"lat": 13.5280, "lon": 144.8210, "name": "Liguan Residential"},
+    "GTA_Y_Sengsong": {"lat": 13.5410, "lon": 144.8320, "name": "Y-Sengsong Rd Site"},
+    "GTA_Marine_Drive_North": {"lat": 13.5350, "lon": 144.8450, "name": "Marine Drive Corridor"},
+    "GTA_Astumbo": {"lat": 13.5520, "lon": 144.8180, "name": "Astumbo District"},
+    "ITE_Dededo_Village": {"lat": 13.5180, "lon": 144.8390, "name": "Central Dededo Hub"},
+    "GTA_Chalan_Lagu": {"lat": 13.5590, "lon": 144.8350, "name": "North Coastal Site"}
 }
 
 server = Flask(__name__)
@@ -77,20 +86,7 @@ def update_ui(n):
     fig.update_layout(template="plotly_dark", yaxis=dict(range=[-120, -60]), title="RSRP Intensity")
     
     # Compass logic
-    target = # --- TOWER DATABASE: DEDEDO VILLAGE CLUSTERS ---
-# Note: RSRP (Signal) will be strongest when your phone faces these coordinates.
-TOWER_DATABASE = {
-    "GTA_Micronesia_Mall": {"lat": 13.5152, "lon": 144.8155, "name": "Mall Main Hub"},
-    "GTA_Wusstig_Rd": {"lat": 13.5481, "lon": 144.8512, "name": "North Dededo"},
-    "GTA_Macheche": {"lat": 13.5225, "lon": 144.8285, "name": "Macheche/Harmon Loop"},
-    "ITE_Harmon_Industrial": {"lat": 13.5095, "lon": 144.8050, "name": "Harmon Data Center"},
-    "GTA_Liguan_Terrace": {"lat": 13.5280, "lon": 144.8210, "name": "Liguan Residential"},
-    "GTA_Y_Sengsong": {"lat": 13.5410, "lon": 144.8320, "name": "Y-Sengsong Rd Site"},
-    "GTA_Marine_Drive_North": {"lat": 13.5350, "lon": 144.8450, "name": "Marine Drive Corridor"},
-    "GTA_Astumbo": {"lat": 13.5520, "lon": 144.8180, "name": "Astumbo District"},
-    "ITE_Dededo_Village": {"lat": 13.5180, "lon": 144.8390, "name": "Central Dededo Hub"},
-    "GTA_Chalan_Lagu": {"lat": 13.5590, "lon": 144.8350, "name": "North Coastal Site"}
-}
+    target = TOWER_DATABASE.get("GTA_Dededo_1") 
     angle = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
     needle_style = {'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center', 
                     'width': '4px', 'height': '40px', 'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%'}
