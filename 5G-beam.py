@@ -129,6 +129,3 @@ def update_ui(n):
     }
     
     return fig, needle_style, msg, status_style
-
-    # host='0.0.0.0' allows external devices (like your phone) to connect
-    app.run(host='0.0.0.0', port=5000, debug=True)
