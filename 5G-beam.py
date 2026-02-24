@@ -51,7 +51,13 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 # --- DASHBOARD LAYOUT ---
 app.layout = html.Div([
     html.H2("Guam 5G Person-Detection Radar", style={'textAlign': 'center'}),
-    
+    # Add this inside the app.layout = html.Div([ ... ]) block
+    html.Div(id='status-display', style={
+        'textAlign': 'center', 
+        'fontSize': '30px', 
+        'marginTop': '20px',
+        'fontWeight': 'bold'
+    }),
     html.Div([
         html.Div([
             html.H4("Tower Compass"),
@@ -75,13 +81,6 @@ app.layout = html.Div([
     
     dcc.Interval(id='refresh', interval=500) # 0.5 second updates
 
-    # Add this inside the app.layout = html.Div([ ... ]) block
-    html.Div(id='status-display', style={
-        'textAlign': 'center', 
-        'fontSize': '30px', 
-        'marginTop': '20px',
-        'fontWeight': 'bold'
-    }),
 ])
 
 @app.callback(
