@@ -112,18 +112,24 @@ def update_ui(n):
     # 3. Detection Logic
     # Safely handle the RSRP value even if it's sent as a string like "-98"
  try:
-    rsrp = int(data.get('rsrp', 0))
-except (ValueError, TypeError):
-    rsrp = 0  # Fallback if the data is garbled
-    if rsrp < -98: # Threshold: If signal is very weak (blocked)
+        rsrp = int(data.get('rsrp', 0))
+    except (ValueError, TypeError):
+        rsrp = 0  # Fallback if the data is garbled
+
+    # --- Move this OUT of the except block (de-indent) ---
+    if rsrp < -98: 
         msg, color, bg = "⚠️ PERSON DETECTED ⚠️", "white", "red"
     else:
         msg, color, bg = "✅ ROOM CLEAR", "#00ff00", "transparent"
         
-    status_style = {'color': color, 'backgroundColor': bg, 'textAlign': 'center', 'fontSize': '45px'}
+    status_style = {
+        'color': color, 
+        'backgroundColor': bg, 
+        'textAlign': 'center', 
+        'fontSize': '45px'
+    }
     
     return fig, needle_style, msg, status_style
-
-if __name__ == '__main__':
+   
     # host='0.0.0.0' allows external devices (like your phone) to connect
     app.run(host='0.0.0.0', port=5000, debug=True)
