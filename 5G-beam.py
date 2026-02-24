@@ -74,37 +74,44 @@ app.layout = html.Div([
     ]),
     
     dcc.Interval(id='refresh', interval=500) # 0.5 second updates
+
+    # Add this inside the app.layout = html.Div([ ... ]) block
+    html.Div(id='status-display', style={
+        'textAlign': 'center', 
+        'fontSize': '30px', 
+        'marginTop': '20px',
+        'fontWeight': 'bold'
+    }),
 ])
 
 @app.callback(
-    [Output('signal-graph', 'figure'), Output('needle-rotation', 'style')],
+    [Output('signal-graph', 'figure'), 
+     Output('needle-rotation', 'style'),
+     Output('status-display', 'children'),
+     Output('status-display', 'style')], # We'll update the color too!
     [Input('refresh', 'n_intervals')]
 )
 def update_ui(n):
-    # Graph logic
+    # 1. Graph Logic
     fig = go.Figure(go.Scatter(y=live_stats["history"], mode='lines+markers', line=dict(color='#00ff00')))
     fig.update_layout(template="plotly_dark", yaxis=dict(range=[-120, -60]), title="RSRP Intensity")
     
-    # Compass logic
-    target = TOWER_DATABASE.get("GTA_Dededo_1") 
+    # 2. Compass Logic
+    target = TOWER_DATABASE.get("GTA_Micronesia_Mall") 
     angle = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
     needle_style = {'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center', 
                     'width': '4px', 'height': '40px', 'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%'}
-
     
-    return fig, needle_style
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
-# Inside update_ui(n)
-rsrp_current = live_stats["current_rsrp"]
-baseline = -90  # Adjust based on your room's average signal
-
-# If signal drops by more than 5dBm, it's likely a human body
-if rsrp_current < (baseline - 5):
-    status_text = "PERSON DETECTED"
-    status_color = "red"
-else:
-    status_text = "CLEAR"
-    status_color = "green"
+    # 3. THE DETECTION LOGIC (The part you added)
+    rsrp_current = live_stats["current_rsrp"]
+    baseline = -90  # Your "empty room" signal strength
+    
+    if rsrp_current < (baseline - 5): # If signal drops by 5dBm
+        status_text = "⚠️ PERSON DETECTED ⚠️"
+        status_style = {'color': 'red', 'textAlign': 'center', 'fontSize': '30px'}
+    else:
+        status_text = "✅ ROOM CLEAR"
+        status_style = {'color': 'green', 'textAlign': 'center', 'fontSize': '30px'}
+    
+    # IMPORTANT: Return all 4 outputs in the exact order of the @app.callback header
+    return fig, needle_style, status_text, status_style
