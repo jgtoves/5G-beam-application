@@ -111,7 +111,7 @@ def update_ui(n):
     
     # 3. Detection Logic
     # Safely handle the RSRP value even if it's sent as a string like "-98"
- try:
+try:
         rsrp = int(data.get('rsrp', 0))
     except (ValueError, TypeError):
         rsrp = 0  # Fallback if the data is garbled
