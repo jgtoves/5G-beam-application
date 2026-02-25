@@ -5,6 +5,9 @@ import plotly.graph_objs as go
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import math
+import subprocess
+import json
+import re
 
 # --- TOWER DATABASE ---
 TOWER_DATABASE = {
@@ -28,7 +31,28 @@ app = dash.Dash(__name__, server=server)
 live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "history": []}
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
-@server.route('/update', methods=['GET, POST'])
+
+def get_live_rsrp():
+    try:
+        # We look at the last 50 lines of the radio log
+        # 'dump' mode is non-blocking so it won't stall
+        cmd = "logcat -b radio -d | grep -i 'rsrp' | tail -n 1"
+        output = subprocess.check_output(cmd, shell=True, encoding='utf-8', errors='ignore')
+        
+        # Use Regex to find the RSRP number (e.g., rsrp=-98)
+        match = re.search(r"rsrp=(-?\d+)", output)
+        if match:
+            return int(match.group(1))
+        
+        # Fallback if rsrp isn't found but signal is
+        match_dbm = re.search(r"(-?\d+)\s*dBm", output)
+        if match_dbm:
+            return int(match_dbm.group(1))
+            
+    except Exception as e:
+        return -110 # Default to weak signal
+    return -110
+
 def update_data():
     data = request.json
     live_stats["current_rsrp"] = data.get("rsrp", -110)
@@ -108,6 +132,13 @@ def update_ui(n):
         'width': '4px', 'height': '50px', 'backgroundColor': 'red', 
         'position': 'absolute', 'left': '48%', 'top': '10%'
     }
+
+    # Add this to your Dash Layout
+dcc.Interval(
+    id='interval-component',
+    interval=1*1000, # 1000 milliseconds = 1 second
+    n_intervals=0
+)
     
     # 3. Detection Logic
     try:
