@@ -105,34 +105,38 @@ def update_dashboard(n):
     history_data.append(rsrp)
     if len(history_data) > 50: history_data.pop(0)
 
-    # 1. Detection Logic
-    # Calibration: -105 is usually the 'person blocking' threshold
-    if rsrp < -105:
-        status_text = "⚠️ PERSON DETECTED"
-        status_style = {'backgroundColor': '#ff0000', 'color': 'white', 'borderRadius': '10px'}
-    else:
-        status_text = "✅ ROOM CLEAR"
-        status_style = {'backgroundColor': '#00ff00', 'color': 'black', 'borderRadius': '10px'}
+    # 1. FIND NEAREST TOWER & BEARING
+    # We'll use the Mall hub as a default, or you can loop through TOWER_DATABASE
+    target = TOWER_DATABASE["GTA_Micronesia_Mall"]
+    bearing = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
 
-    # 2. Compass Rotation (Fake math for visual effect)
+    # 2. DETECTION STATUS (With subtle flickering for 'Radar' effect)
+    if rsrp < -105:
+        status_text = f"⚠️ MOVEMENT DETECTED | {rsrp} dBm"
+        status_style = {'backgroundColor': '#bb0000', 'color': 'white', 'borderRadius': '10px', 'border': '2px solid red'}
+    else:
+        status_text = f"✅ SCANNING... | {rsrp} dBm"
+        status_style = {'backgroundColor': '#003300', 'color': '#00ff00', 'borderRadius': '10px', 'border': '1px solid #00ff00'}
+
+    # 3. COMPASS NEEDLE (Points to tower + slight 'jitter' based on signal)
+    jitter = (rsrp + 100) / 5  # Adds a little "shiver" to the needle
     needle_style = {
         'width': '4px', 'height': '50px', 'backgroundColor': 'red',
         'position': 'absolute', 'left': '48%', 'top': '10%',
         'transformOrigin': 'bottom center', 
-        'transform': f'rotate({(rsrp + 140) * 2}deg)', # Rotate based on signal
-        'transition': 'transform 0.5s'
+        'transform': f'rotate({bearing + jitter}deg)',
+        'transition': 'transform 0.3s'
     }
 
-    # 3. Graph Data
+    # 4. GRAPH
     fig = go.Figure(
-        data=[go.Scatter(y=list(history_data), mode='lines', line=dict(color='#00ff00', width=3))],
+        data=[go.Scatter(y=list(history_data), mode='lines+markers', line=dict(color='#00ff00', width=2))],
         layout=go.Layout(
-            title=f"Current Signal: {rsrp} dBm",
+            margin=dict(l=10, r=10, t=30, b=10),
             paper_bgcolor='#111', plot_bgcolor='#111',
-            font=dict(color='white'),
-            xaxis=dict(visible=False),
-            yaxis=dict(range=[-130, -60], gridcolor='#333'),
-            margin=dict(l=20, r=20, t=40, b=20)
+            font=dict(color='#00ff00'),
+            yaxis=dict(range=[-125, -70], gridcolor='#222'),
+            xaxis=dict(visible=False)
         )
     )
 
