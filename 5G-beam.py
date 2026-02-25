@@ -39,15 +39,22 @@ app = dash.Dash(__name__, server=server)
 @server.route('/update', methods=['GET'])
 def update_signal():
     global latest_signal
-    # Look for ?rsrp= in the URL
+    # Get 'rsrp' from the URL parameters
     val = request.args.get('rsrp')
     
-    if val:
-        latest_signal['rsrp'] = int(val)
-        print(f"✅ GET DATA RECEIVED: {val}")
-        return f"Updated to {val}", 200
-    
-    return "Missing 'rsrp' parameter", 400
+    try:
+        if val is not None:
+            # Strip any accidental spaces and convert to number
+            clean_val = int(str(val).strip())
+            latest_signal['rsrp'] = clean_val
+            print(f"✅ RADAR UPDATED: {clean_val} dBm")
+            return f"Signal Received: {clean_val}", 200
+        else:
+            print("❌ RADAR ERROR: Parameter 'rsrp' was missing in URL")
+            return "Missing rsrp parameter", 400
+    except Exception as e:
+        print(f"❌ RADAR MATH ERROR: {e}")
+        return f"Error: {str(e)}", 500
             
 
 # --- DASHBOARD LAYOUT ---
