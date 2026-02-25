@@ -130,13 +130,6 @@ def update_ui(n):
         'width': '4px', 'height': '50px', 'backgroundColor': 'red', 
         'position': 'absolute', 'left': '48%', 'top': '10%'
     }
-
-    # Add this to your Dash Layout
-dcc.Interval(
-    id='interval-component',
-    interval=1*1000, # 1000 milliseconds = 1 second
-    n_intervals=0
-)
     
     # 3. Detection Logic
     try:
