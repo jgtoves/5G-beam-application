@@ -43,9 +43,10 @@ def update():
     if content and 'rsrp' in content:
         latest_signal = content  # This "links" Tasker to the Dashboard
     return {"status": "ok"}
+    
             # This is your raw number from Tasker!
-            val = data['rsrp']
-            print(f"Received Signal: {val}")
+                val = data['rsrp']
+                    print(f"Received Signal: {val}")
             
             # Add your Person Detection logic here
             if int(val) < -105:
