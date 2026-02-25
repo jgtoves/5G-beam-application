@@ -35,7 +35,7 @@ app = dash.Dash(__name__, server=server)
 
 
 # --- FLASK ROUTE (Receives data from Tasker) ---
-@server.route('/update', methods=['GET', 'POST'])
+@server.route('/update/', methods=['GET', 'POST'])
 def update_signal():
     global latest_signal
     if request.method == 'POST':
