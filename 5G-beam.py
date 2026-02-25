@@ -33,29 +33,29 @@ live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "hist
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
 # Add this near the top of your script
-
 latest_signal = {"rsrp": -90} # Default starting value
 
-@server.route('/update', methods=['POST'])
-def update():
+@server.route('/update', methods=['GET', 'POST'])
+def update_signal():
     global latest_signal
-    content = request.get_json(silent=True)
-    if content and 'rsrp' in content:
-        latest_signal = content  # This "links" Tasker to the Dashboard
-    return {"status": "ok"}
-    
-            # This is your raw number from Tasker!
-                val = data['rsrp']
-                    print(f"Received Signal: {val}")
+    if request.method == 'POST':
+        content = request.get_json(silent=True)
+        if content and 'rsrp' in content:
+            # 1. Update the global variable for the Dashboard
+            latest_signal = content  
             
-            # Add your Person Detection logic here
+            # 2. Extract the value for local printing/logic
+            val = content['rsrp']
+            print(f"Received Signal: {val}")
+            
+            # 3. Person Detection Logic (Terminal Alert)
             if int(val) < -105:
-                print("PERSON DETECTED (Signal Blocked)")
+                print("⚠️ PERSON DETECTED (Signal Blocked)")
             else:
-                print("Room Clear")
+                print("✅ Room Clear")
                 
-        return {"status": "success"}, 200
-    return "Server is running", 200
+            return {"status": "ok"}, 200
+    return "Server Active", 200
 
 def update_data():
     data = request.json
