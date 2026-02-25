@@ -28,7 +28,7 @@ app = dash.Dash(__name__, server=server)
 live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "history": []}
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
-@server.route('/update', methods=['POST'])
+@server.route('/update', methods=['GET, POST'])
 def update_data():
     data = request.json
     live_stats["current_rsrp"] = data.get("rsrp", -110)
