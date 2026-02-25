@@ -8,6 +8,7 @@ import math
 import subprocess
 import json
 import re
+from flask import request
 
 # --- TOWER DATABASE ---
 TOWER_DATABASE = {
@@ -32,26 +33,23 @@ live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "hist
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
 
-def get_live_rsrp():
-    try:
-        # We look at the last 50 lines of the radio log
-        # 'dump' mode is non-blocking so it won't stall
-        cmd = "logcat -b radio -d | grep -i 'rsrp' | tail -n 1"
-        output = subprocess.check_output(cmd, shell=True, encoding='utf-8', errors='ignore')
-        
-        # Use Regex to find the RSRP number (e.g., rsrp=-98)
-        match = re.search(r"rsrp=(-?\d+)", output)
-        if match:
-            return int(match.group(1))
-        
-        # Fallback if rsrp isn't found but signal is
-        match_dbm = re.search(r"(-?\d+)\s*dBm", output)
-        if match_dbm:
-            return int(match_dbm.group(1))
+@server.route('/update', methods=['GET', 'POST'])
+def update_signal():
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        if data and 'rsrp' in data:
+            # This is your raw number from Tasker!
+            val = data['rsrp']
+            print(f"Received Signal: {val}")
             
-    except Exception as e:
-        return -110 # Default to weak signal
-    return -110
+            # Add your Person Detection logic here
+            if int(val) < -105:
+                print("PERSON DETECTED (Signal Blocked)")
+            else:
+                print("Room Clear")
+                
+        return {"status": "success"}, 200
+    return "Server is running", 200
 
 def update_data():
     data = request.json
