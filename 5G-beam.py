@@ -24,17 +24,13 @@ TOWER_DATABASE = {
     "IT&E_Dededo_Village": {"lat": 13.5280, "lon": 144.8450, "name": "Central Dededo Hub"}
 }
 
-# --- 1. SETTINGS & GLOBALS (Define these FIRST) ---
-user_location = {"lat": 13.520, "lon": 144.820} 
-latest_signal = {"rsrp": -90}
-history_data = []
 
 server = Flask(__name__)
 CORS(server)
 app = dash.Dash(__name__, server=server)
 
 # --- GLOBALS ---
-latest_signal = {"rsrp": -95}
+latest_signal = {"rsrp": -85}
 history_data = []
 user_location = {"lat": 13.520, "lon": 144.820}
 
@@ -73,8 +69,8 @@ def update_ui(n):
     if len(history_data) > 30: history_data.pop(0)
 
     # Simple Detection Logic
-    color = "#00ff00" if rsrp > -105 else "#ff0000"
-    status = "✅ CLEAR" if rsrp > -105 else "⚠️ DETECTED"
+    color = "#00ff00" if rsrp > -90 else "#ff0000"
+    status = "✅ CLEAR" if rsrp > -90 else "⚠️ DETECTED"
     
     fig = {
         'data': [{'y': list(history_data), 'type': 'line', 'line': {'color': color}}],
