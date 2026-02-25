@@ -41,11 +41,9 @@ def update_signal():
     if request.method == 'POST':
         content = request.get_json(silent=True)
         if content and 'rsrp' in content:
-            # Update the global variable
             latest_signal['rsrp'] = int(content['rsrp'])
-            print(f"Tasker sent: {latest_signal['rsrp']} dBm")
-            return jsonify({"status": "success"}), 200
-    return "Server is running. Send POST to /update", 200
+            return {"status": "success"}, 200
+    return "Server is alive. Waiting for Tasker...", 200
 
 # --- DASHBOARD LAYOUT ---
 app.layout = html.Div([
