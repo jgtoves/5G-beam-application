@@ -30,7 +30,7 @@ CORS(server)
 app = dash.Dash(__name__, server=server)
 
 # --- GLOBALS ---
-latest_signal = {"rsrp": -85}
+latest_signal = {"rsrp": -95}
 history_data = []
 user_location = {"lat": 13.520, "lon": 144.820}
 
@@ -69,8 +69,8 @@ def update_ui(n):
     if len(history_data) > 30: history_data.pop(0)
 
     # Simple Detection Logic
-    color = "#00ff00" if rsrp > -90 else "#ff0000"
-    status = "✅ CLEAR" if rsrp > -90 else "⚠️ DETECTED"
+    color = "#00ff00" if rsrp > -100 else "#ff0000"
+    status = "✅ CLEAR" if rsrp > -100 else "⚠️ DETECTED"
     
     fig = {
         'data': [{'y': list(history_data), 'type': 'line', 'line': {'color': color}}],
