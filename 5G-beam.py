@@ -33,13 +33,16 @@ live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "hist
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
 # Add this near the top of your script
-latest_signal = {"rsrp": -110}
 
-@server.route('/update', methods=['GET', 'POST'])
-def update_signal():
-    if request.method == 'POST':
-        data = request.get_json(silent=True)
-        if data and 'rsrp' in data:
+latest_signal = {"rsrp": -90} # Default starting value
+
+@server.route('/update', methods=['POST'])
+def update():
+    global latest_signal
+    content = request.get_json(silent=True)
+    if content and 'rsrp' in content:
+        latest_signal = content  # This "links" Tasker to the Dashboard
+    return {"status": "ok"}
             # This is your raw number from Tasker!
             val = data['rsrp']
             print(f"Received Signal: {val}")
