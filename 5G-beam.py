@@ -32,6 +32,8 @@ app = dash.Dash(__name__, server=server)
 live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "history": []}
 user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
 
+# Add this near the top of your script
+latest_signal = {"rsrp": -110}
 
 @server.route('/update', methods=['GET', 'POST'])
 def update_signal():
@@ -65,7 +67,13 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
         math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
     return (math.degrees(math.atan2(y, x)) + 360) % 360
 
+
 # --- FULL DASHBOARD LAYOUT ---
+# Initialize a global list to store the history for the graph
+# (Starts with a neutral -90 dBm)
+signal_history = deque(maxlen=50) 
+signal_history.append(-90)
+
 app.layout = html.Div([
     html.H2("5G Person-Detection Radar", style={'textAlign': 'center', 'color': '#00ff00'}),
     
@@ -101,56 +109,49 @@ app.layout = html.Div([
     dcc.Interval(id='refresh', interval=500)
 ], style={'backgroundColor': '#111', 'padding': '20px', 'height': '100vh', 'fontFamily': 'sans-serif'})
 
-# --- FULL CALLBACK ---
+# adding below layout
 @app.callback(
-    [Output('signal-graph', 'figure'), 
+    [Output('status-display', 'children'),
+     Output('status-display', 'style'),
      Output('needle-rotation', 'style'),
-     Output('status-display', 'children'),
-     Output('status-display', 'style')],
+     Output('signal-graph', 'figure')],
     [Input('refresh', 'n_intervals')]
 )
-def update_ui(n):
-    # 1. Update Graph
-    history_data = list(live_stats["history"])
-    fig = go.Figure(go.Scatter(y=history_data, mode='lines+markers', line=dict(color='#00ff00', width=3)))
-    fig.update_layout(
-        template="plotly_dark", 
-        yaxis=dict(range=[-120, -60], gridcolor='#333'),
-        xaxis=dict(showgrid=False),
-        margin=dict(l=20, r=20, t=10, b=20),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
-    )
-    
-    # 2. Update Compass
-    tower = TOWER_DATABASE[live_stats["active_tower"]]
-    angle = calculate_bearing(user_location['lat'], user_location['lon'], tower['lat'], tower['lon'])
-    needle_style = {
-        'transform': f'rotate({angle}deg)', 'transformOrigin': 'bottom center',
-        'width': '4px', 'height': '50px', 'backgroundColor': 'red', 
-        'position': 'absolute', 'left': '48%', 'top': '10%'
-    }
-    
-    # 3. Detection Logic
-    try:
-        rsrp = int(data.get('rsrp', 0))
-    except (ValueError, TypeError):
-        rsrp = 0 
+def update_dashboard(n):
+    # latest_signal is the global variable Tasker updates via /update
+    global latest_signal
+    rsrp = latest_signal.get('rsrp', -110)
+    signal_history.append(rsrp)
 
-    # All these lines must start at the exact same vertical column
-    if rsrp < -98: 
-        msg, color, bg = "⚠️ PERSON DETECTED ⚠️", "white", "red"
+    # 1. Logic for Detection Status
+    if rsrp < -105:
+        status_text = "⚠️ PERSON DETECTED"
+        status_style = {'backgroundColor': '#ff0000', 'color': 'white', 'textAlign': 'center', 'fontSize': '45px'}
     else:
-        msg, color, bg = "✅ ROOM CLEAR", "#00ff00", "transparent"
-        
-    status_style = {
-        'color': color, 
-        'backgroundColor': bg, 
-        'textAlign': 'center', 
-        'fontSize': '45px'
+        status_text = "✅ ROOM CLEAR"
+        status_style = {'backgroundColor': '#00ff00', 'color': 'black', 'textAlign': 'center', 'fontSize': '45px'}
+
+    # 2. Logic for Compass (Mapping RSRP to a fake 'rotation' for visual effect)
+    # This rotates the needle based on signal strength
+    rotation = {'transform': f'rotate({rsrp * 2}deg)', 'width': '4px', 'height': '50px', 
+                'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%',
+                'transformOrigin': 'bottom center', 'transition': 'transform 0.5s'}
+
+    # 3. Logic for Graph
+    fig = {
+        'data': [{'x': list(range(len(signal_history))), 'y': list(signal_history), 'type': 'line', 'marker': {'color': '#00ff00'}}],
+        'layout': {
+            'title': f'Live RSRP: {rsrp} dBm',
+            'plot_bgcolor': '#111',
+            'paper_bgcolor': '#111',
+            'font': {'color': 'white'},
+            'xaxis': {'visible': False},
+            'yaxis': {'range': [-140, -60]}
+        }
     }
-    
-    return fig, needle_style, msg, status_style
+
+    return status_text, status_style, rotation, fig
+
 
 # NO spaces at the start of these two lines!
 if __name__ == '__main__':
