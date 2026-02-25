@@ -82,15 +82,18 @@ app.layout = html.Div([
     dcc.Interval(id='refresh', interval=500) # Refresh every half-second
 ], style={'backgroundColor': '#111', 'padding': '20px', 'height': '100vh', 'fontFamily': 'sans-serif'})
 
-# added above callback
+# --- MATH HELPER ---
 def calculate_bearing(lat1, lon1, lat2, lon2):
-    # Math to find the angle between two GPS points
-    dLon = math.radians(lon2 - lon1)
-    y = math.sin(dLon) * math.cos(math.radians(lat2))
-    x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
-        math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
-    return (math.degrees(math.atan2(y, x)) + 360) % 360
-# --- DASHBOARD CALLBACK (Updates the UI) ---
+    try:
+        dLon = math.radians(lon2 - lon1)
+        y = math.sin(dLon) * math.cos(math.radians(lat2))
+        x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
+            math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
+        return (math.degrees(math.atan2(y, x)) + 360) % 360
+    except:
+        return 0
+
+# --- DASHBOARD CALLBACK ---
 @app.callback(
     [Output('status-display', 'children'),
      Output('status-display', 'style'),
@@ -99,48 +102,54 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     [Input('refresh', 'n_intervals')]
 )
 def update_dashboard(n):
-    global latest_signal, history_data
+    global latest_signal, history_data, user_location
     
-    rsrp = latest_signal['rsrp']
+    # Grab data safely
+    rsrp = latest_signal.get('rsrp', -105)
     history_data.append(rsrp)
-    if len(history_data) > 50: history_data.pop(0)
+    if len(history_data) > 50:
+        history_data.pop(0)
 
-    # 1. FIND NEAREST TOWER & BEARING
-    # We'll use the Mall hub as a default, or you can loop through TOWER_DATABASE
+    # 1. Compass Math
+    # Pointing to the Micronesia Mall tower as a test
     target = TOWER_DATABASE["GTA_Micronesia_Mall"]
     bearing = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
-
-    # 2. DETECTION STATUS (With subtle flickering for 'Radar' effect)
-    if rsrp < -105:
-        status_text = f"⚠️ MOVEMENT DETECTED | {rsrp} dBm"
-        status_style = {'backgroundColor': '#bb0000', 'color': 'white', 'borderRadius': '10px', 'border': '2px solid red'}
-    else:
-        status_text = f"✅ SCANNING... | {rsrp} dBm"
-        status_style = {'backgroundColor': '#003300', 'color': '#00ff00', 'borderRadius': '10px', 'border': '1px solid #00ff00'}
-
-    # 3. COMPASS NEEDLE (Points to tower + slight 'jitter' based on signal)
-    jitter = (rsrp + 100) / 5  # Adds a little "shiver" to the needle
+    
+    # Add 'jitter' so the needle looks alive
+    jitter = (n % 5) - 2 # Artificial tiny movement to show it's "scanning"
+    
+    # 2. Needle Style
     needle_style = {
         'width': '4px', 'height': '50px', 'backgroundColor': 'red',
         'position': 'absolute', 'left': '48%', 'top': '10%',
         'transformOrigin': 'bottom center', 
         'transform': f'rotate({bearing + jitter}deg)',
-        'transition': 'transform 0.3s'
+        'transition': 'transform 0.2s'
     }
 
-    # 4. GRAPH
+    # 3. Status Logic
+    if rsrp < -108: # Adjusted for Guam typical indoor signals
+        status_text = f"⚠️ INTRUSION DETECTED | {rsrp} dBm"
+        status_style = {'backgroundColor': '#660000', 'color': 'white', 'textAlign': 'center'}
+    else:
+        status_text = f"✅ RADAR CLEAR | {rsrp} dBm"
+        status_style = {'backgroundColor': '#002200', 'color': '#00ff00', 'textAlign': 'center'}
+
+    # 4. Graph Update
     fig = go.Figure(
-        data=[go.Scatter(y=list(history_data), mode='lines+markers', line=dict(color='#00ff00', width=2))],
+        data=[go.Scatter(y=list(history_data), mode='lines+markers', line=dict(color='#00ff00'))],
         layout=go.Layout(
-            margin=dict(l=10, r=10, t=30, b=10),
-            paper_bgcolor='#111', plot_bgcolor='#111',
+            plot_bgcolor='#111', paper_bgcolor='#111',
             font=dict(color='#00ff00'),
-            yaxis=dict(range=[-125, -70], gridcolor='#222'),
-            xaxis=dict(visible=False)
+            yaxis=dict(range=[-130, -60], gridcolor='#222'),
+            xaxis=dict(visible=False),
+            height=300, margin=dict(l=10, r=10, t=10, b=10)
         )
     )
 
     return status_text, status_style, needle_style, fig
+
+    
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
