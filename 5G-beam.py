@@ -28,56 +28,25 @@ server = Flask(__name__)
 CORS(server)
 app = dash.Dash(__name__, server=server)
 
-# Global storage
-live_stats = {"current_rsrp": -100, "active_tower": "GTA_Micronesia_Mall", "history": []}
-user_location = {"lat": 13.520, "lon": 144.820} # Your house in Dededo
+# --- GLOBAL STORAGE ---
+# This acts as the bridge between Tasker and your Dashboard
+latest_signal = {"rsrp": -90, "tower": "GTA_Micronesia_Mall"} 
+history_data = [] # Stores RSRP over time for the graph
 
-# Add this near the top of your script
-latest_signal = {"rsrp": -90} # Default starting value
-
+# --- FLASK ROUTE (Receives data from Tasker) ---
 @server.route('/update', methods=['GET', 'POST'])
 def update_signal():
     global latest_signal
     if request.method == 'POST':
         content = request.get_json(silent=True)
         if content and 'rsrp' in content:
-            # 1. Update the global variable for the Dashboard
-            latest_signal = content  
-            
-            # 2. Extract the value for local printing/logic
-            val = content['rsrp']
-            print(f"Received Signal: {val}")
-            
-            # 3. Person Detection Logic (Terminal Alert)
-            if int(val) < -105:
-                print("⚠️ PERSON DETECTED (Signal Blocked)")
-            else:
-                print("✅ Room Clear")
-                
-            return {"status": "ok"}, 200
-    return "Server Active", 200
+            # Update the global variable
+            latest_signal['rsrp'] = int(content['rsrp'])
+            print(f"Tasker sent: {latest_signal['rsrp']} dBm")
+            return jsonify({"status": "success"}), 200
+    return "Server is running. Send POST to /update", 200
 
-def update_data():
-    data = request.json
-    live_stats["current_rsrp"] = data.get("rsrp", -110)
-    live_stats["history"].append(live_stats["current_rsrp"])
-    if len(live_stats["history"]) > 50: live_stats["history"].pop(0)
-    return jsonify({"status": "success"})
-
-def calculate_bearing(lat1, lon1, lat2, lon2):
-    dLon = math.radians(lon2 - lon1)
-    y = math.sin(dLon) * math.cos(math.radians(lat2))
-    x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
-        math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
-    return (math.degrees(math.atan2(y, x)) + 360) % 360
-
-
-# --- FULL DASHBOARD LAYOUT ---
-# Initialize a global list to store the history for the graph
-# (Starts with a neutral -90 dBm)
-signal_history = deque(maxlen=50) 
-signal_history.append(-90)
-
+# --- DASHBOARD LAYOUT ---
 app.layout = html.Div([
     html.H2("5G Person-Detection Radar", style={'textAlign': 'center', 'color': '#00ff00'}),
     
@@ -90,7 +59,7 @@ app.layout = html.Div([
                 'border': '3px solid #555', 'margin': 'auto', 'position': 'relative',
                 'backgroundColor': '#222'
             }, children=[
-                html.Div(id='needle-rotation', style={ # <--- ID MUST BE HERE
+                html.Div(id='needle-rotation', style={
                     'width': '4px', 'height': '50px', 'backgroundColor': 'red',
                     'position': 'absolute', 'left': '48%', 'top': '10%',
                     'transformOrigin': 'bottom center', 'transition': 'transform 0.5s'
@@ -110,10 +79,10 @@ app.layout = html.Div([
         'padding': '20px', 'borderRadius': '10px', 'fontWeight': 'bold'
     }),
     
-    dcc.Interval(id='refresh', interval=500)
+    dcc.Interval(id='refresh', interval=500) # Refresh every half-second
 ], style={'backgroundColor': '#111', 'padding': '20px', 'height': '100vh', 'fontFamily': 'sans-serif'})
 
-# adding below layout
+# --- DASHBOARD CALLBACK (Updates the UI) ---
 @app.callback(
     [Output('status-display', 'children'),
      Output('status-display', 'style'),
@@ -122,41 +91,44 @@ app.layout = html.Div([
     [Input('refresh', 'n_intervals')]
 )
 def update_dashboard(n):
-    # latest_signal is the global variable Tasker updates via /update
-    global latest_signal
-    rsrp = latest_signal.get('rsrp', -110)
-    signal_history.append(rsrp)
+    global latest_signal, history_data
+    
+    rsrp = latest_signal['rsrp']
+    history_data.append(rsrp)
+    if len(history_data) > 50: history_data.pop(0)
 
-    # 1. Logic for Detection Status
+    # 1. Detection Logic
+    # Calibration: -105 is usually the 'person blocking' threshold
     if rsrp < -105:
         status_text = "⚠️ PERSON DETECTED"
-        status_style = {'backgroundColor': '#ff0000', 'color': 'white', 'textAlign': 'center', 'fontSize': '45px'}
+        status_style = {'backgroundColor': '#ff0000', 'color': 'white', 'borderRadius': '10px'}
     else:
         status_text = "✅ ROOM CLEAR"
-        status_style = {'backgroundColor': '#00ff00', 'color': 'black', 'textAlign': 'center', 'fontSize': '45px'}
+        status_style = {'backgroundColor': '#00ff00', 'color': 'black', 'borderRadius': '10px'}
 
-    # 2. Logic for Compass (Mapping RSRP to a fake 'rotation' for visual effect)
-    # This rotates the needle based on signal strength
-    rotation = {'transform': f'rotate({rsrp * 2}deg)', 'width': '4px', 'height': '50px', 
-                'backgroundColor': 'red', 'position': 'absolute', 'left': '48%', 'top': '10%',
-                'transformOrigin': 'bottom center', 'transition': 'transform 0.5s'}
-
-    # 3. Logic for Graph
-    fig = {
-        'data': [{'x': list(range(len(signal_history))), 'y': list(signal_history), 'type': 'line', 'marker': {'color': '#00ff00'}}],
-        'layout': {
-            'title': f'Live RSRP: {rsrp} dBm',
-            'plot_bgcolor': '#111',
-            'paper_bgcolor': '#111',
-            'font': {'color': 'white'},
-            'xaxis': {'visible': False},
-            'yaxis': {'range': [-140, -60]}
-        }
+    # 2. Compass Rotation (Fake math for visual effect)
+    needle_style = {
+        'width': '4px', 'height': '50px', 'backgroundColor': 'red',
+        'position': 'absolute', 'left': '48%', 'top': '10%',
+        'transformOrigin': 'bottom center', 
+        'transform': f'rotate({(rsrp + 140) * 2}deg)', # Rotate based on signal
+        'transition': 'transform 0.5s'
     }
 
-    return status_text, status_style, rotation, fig
+    # 3. Graph Data
+    fig = go.Figure(
+        data=[go.Scatter(y=list(history_data), mode='lines', line=dict(color='#00ff00', width=3))],
+        layout=go.Layout(
+            title=f"Current Signal: {rsrp} dBm",
+            paper_bgcolor='#111', plot_bgcolor='#111',
+            font=dict(color='white'),
+            xaxis=dict(visible=False),
+            yaxis=dict(range=[-130, -60], gridcolor='#333'),
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+    )
 
+    return status_text, status_style, needle_style, fig
 
-# NO spaces at the start of these two lines!
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run_server(host='0.0.0.0', port=5000, debug=False)
