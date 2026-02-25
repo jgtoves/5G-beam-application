@@ -29,150 +29,61 @@ user_location = {"lat": 13.520, "lon": 144.820}
 latest_signal = {"rsrp": -90}
 history_data = []
 
-server = Flask(__name__)
+    server = Flask(__name__)
 CORS(server)
 app = dash.Dash(__name__, server=server)
 
+# --- GLOBALS ---
+latest_signal = {"rsrp": -95}
+history_data = []
+user_location = {"lat": 13.520, "lon": 144.820}
 
-# --- FLASK ROUTE (Receives data from Tasker) ---
-# Change the path to something very unique
-@server.route('/update', methods=['GET'])
+# --- THE DATA RECEIVER (Completely separate path) ---
+@server.route('/signal', methods=['GET', 'POST'])
 def update_signal():
     global latest_signal
-    # Get 'rsrp' from the URL parameters
-    val = request.args.get('rsrp')
+    # Support both GET (from URL) and POST (from JSON)
+    val = request.args.get('rsrp') or (request.json.get('rsrp') if request.is_json else None)
     
-    try:
-        if val is not None:
-            # Strip any accidental spaces and convert to number
-            clean_val = int(str(val).strip())
-            latest_signal['rsrp'] = clean_val
-            print(f"✅ RADAR UPDATED: {clean_val} dBm")
-            return f"Signal Received: {clean_val}", 200
-        else:
-            print("❌ RADAR ERROR: Parameter 'rsrp' was missing in URL")
-            return "Missing rsrp parameter", 400
-    except Exception as e:
-        print(f"❌ RADAR MATH ERROR: {e}")
-        return f"Error: {str(e)}", 500
-            
+    if val is not None:
+        latest_signal['rsrp'] = int(val)
+        print(f"📡 DATA RECEIVED: {val}")
+        return f"OK: {val}", 200
+    return "No Data", 400
 
 # --- DASHBOARD LAYOUT ---
 app.layout = html.Div([
     html.H2("5G Person-Detection Radar", style={'textAlign': 'center', 'color': '#00ff00'}),
-    
-    html.Div([
-        # LEFT SIDE: COMPASS
-        html.Div([
-            html.H4("Tower Direction", style={'color': 'white'}),
-            html.Div(id='compass-needle', style={
-                'width': '120px', 'height': '120px', 'borderRadius': '50%',
-                'border': '3px solid #555', 'margin': 'auto', 'position': 'relative',
-                'backgroundColor': '#222'
-            }, children=[
-                html.Div(id='needle-rotation', style={
-                    'width': '4px', 'height': '50px', 'backgroundColor': 'red',
-                    'position': 'absolute', 'left': '48%', 'top': '10%',
-                    'transformOrigin': 'bottom center', 'transition': 'transform 0.5s'
-                })
-            ])
-        ], style={'width': '30%', 'display': 'inline-block', 'textAlign': 'center', 'verticalAlign': 'top'}),
-        
-        # RIGHT SIDE: GRAPH
-        html.Div([
-            dcc.Graph(id='signal-graph', animate=True, config={'displayModeBar': False})
-        ], style={'width': '65%', 'display': 'inline-block'})
-    ]),
-    
-    # BOTTOM: DETECTION STATUS
-    html.Div(id='status-display', style={
-        'textAlign': 'center', 'fontSize': '45px', 'marginTop': '40px', 
-        'padding': '20px', 'borderRadius': '10px', 'fontWeight': 'bold'
-    }),
-    
-    dcc.Interval(id='refresh', interval=500) # Refresh every half-second
-], style={'backgroundColor': '#111', 'padding': '20px', 'height': '100vh', 'fontFamily': 'sans-serif'})
-
-# --- MATH HELPER ---
-def calculate_bearing(lat1, lon1, lat2, lon2):
-    try:
-        dLon = math.radians(lon2 - lon1)
-        y = math.sin(dLon) * math.cos(math.radians(lat2))
-        x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
-            math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
-        return (math.degrees(math.atan2(y, x)) + 360) % 360
-    except:
-        return 0
+    html.Div(id='status-display', style={'textAlign': 'center', 'fontSize': '30px', 'padding': '10px'}),
+    dcc.Graph(id='signal-graph', config={'displayModeBar': False}),
+    dcc.Interval(id='refresh', interval=1000) # 1 second refresh
+], style={'backgroundColor': '#111', 'color': 'white', 'height': '100vh'})
 
 # --- DASHBOARD CALLBACK ---
-# --- 1. SETTINGS & GLOBALS (Define these FIRST) ---
-user_location = {"lat": 13.520, "lon": 144.820} 
-latest_signal = {"rsrp": -90}
-history_data = []
-
-# --- 2. APP INITIALIZATION ---
-server = Flask(__name__)
-app = dash.Dash(__name__, server=server)
-
-# --- 3. THE FUNCTION (Tell it where to look) ---
 @app.callback(
     [Output('status-display', 'children'),
      Output('status-display', 'style'),
-     Output('needle-rotation', 'style'),
      Output('signal-graph', 'figure')],
     [Input('refresh', 'n_intervals')]
 )
-def update_dashboard(n):
-    # You MUST include 'user_location' in this global line
-    global latest_signal, history_data, user_location 
-    
-    
-    # Grab data safely
-    rsrp = latest_signal.get('rsrp', -105)
+def update_ui(n):
+    global latest_signal, history_data
+    rsrp = latest_signal['rsrp']
     history_data.append(rsrp)
-    if len(history_data) > 50:
-        history_data.pop(0)
+    if len(history_data) > 30: history_data.pop(0)
 
-    # 1. Compass Math
-    # Pointing to the Micronesia Mall tower as a test
-    target = TOWER_DATABASE["GTA_Micronesia_Mall"]
-    bearing = calculate_bearing(user_location['lat'], user_location['lon'], target['lat'], target['lon'])
+    # Simple Detection Logic
+    color = "#00ff00" if rsrp > -105 else "#ff0000"
+    status = "✅ CLEAR" if rsrp > -105 else "⚠️ DETECTED"
     
-    # Add 'jitter' so the needle looks alive
-    jitter = (n % 5) - 2 # Artificial tiny movement to show it's "scanning"
-    
-    # 2. Needle Style
-    needle_style = {
-        'width': '4px', 'height': '50px', 'backgroundColor': 'red',
-        'position': 'absolute', 'left': '48%', 'top': '10%',
-        'transformOrigin': 'bottom center', 
-        'transform': f'rotate({bearing + jitter}deg)',
-        'transition': 'transform 0.2s'
+    fig = {
+        'data': [{'y': list(history_data), 'type': 'line', 'line': {'color': color}}],
+        'layout': {'paper_bgcolor': '#111', 'plot_bgcolor': '#111', 'font': {'color': 'white'},
+                   'yaxis': {'range': [-130, -60]}}
     }
-
-    # 3. Status Logic
-    if rsrp < -108: # Adjusted for Guam typical indoor signals
-        status_text = f"⚠️ INTRUSION DETECTED | {rsrp} dBm"
-        status_style = {'backgroundColor': '#660000', 'color': 'white', 'textAlign': 'center'}
-    else:
-        status_text = f"✅ RADAR CLEAR | {rsrp} dBm"
-        status_style = {'backgroundColor': '#002200', 'color': '#00ff00', 'textAlign': 'center'}
-
-    # 4. Graph Update
-    fig = go.Figure(
-        data=[go.Scatter(y=list(history_data), mode='lines+markers', line=dict(color='#00ff00'))],
-        layout=go.Layout(
-            plot_bgcolor='#111', paper_bgcolor='#111',
-            font=dict(color='#00ff00'),
-            yaxis=dict(range=[-130, -60], gridcolor='#222'),
-            xaxis=dict(visible=False),
-            height=300, margin=dict(l=10, r=10, t=10, b=10)
-        )
-    )
-
-    return status_text, status_style, needle_style, fig
-
     
+    style = {'backgroundColor': color, 'color': 'black', 'borderRadius': '10px'}
+    return f"{status} ({rsrp} dBm)", style, fig
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run_server(host='0.0.0.0', port=5000, debug=False)
