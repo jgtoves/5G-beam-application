@@ -24,14 +24,15 @@ TOWER_DATABASE = {
     "IT&E_Dededo_Village": {"lat": 13.5280, "lon": 144.8450, "name": "Central Dededo Hub"}
 }
 
+# --- 1. SETTINGS & GLOBALS (Define these FIRST) ---
+user_location = {"lat": 13.520, "lon": 144.820} 
+latest_signal = {"rsrp": -90}
+history_data = []
+
 server = Flask(__name__)
 CORS(server)
 app = dash.Dash(__name__, server=server)
 
-# --- GLOBAL STORAGE ---
-# This acts as the bridge between Tasker and your Dashboard
-latest_signal = {"rsrp": -90, "tower": "GTA_Micronesia_Mall"} 
-history_data = [] # Stores RSRP over time for the graph
 
 # --- FLASK ROUTE (Receives data from Tasker) ---
 @server.route('/update', methods=['GET', 'POST'])
@@ -94,6 +95,16 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
         return 0
 
 # --- DASHBOARD CALLBACK ---
+# --- 1. SETTINGS & GLOBALS (Define these FIRST) ---
+user_location = {"lat": 13.520, "lon": 144.820} 
+latest_signal = {"rsrp": -90}
+history_data = []
+
+# --- 2. APP INITIALIZATION ---
+server = Flask(__name__)
+app = dash.Dash(__name__, server=server)
+
+# --- 3. THE FUNCTION (Tell it where to look) ---
 @app.callback(
     [Output('status-display', 'children'),
      Output('status-display', 'style'),
@@ -102,7 +113,9 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     [Input('refresh', 'n_intervals')]
 )
 def update_dashboard(n):
-    global latest_signal, history_data, user_location
+    # You MUST include 'user_location' in this global line
+    global latest_signal, history_data, user_location 
+    
     
     # Grab data safely
     rsrp = latest_signal.get('rsrp', -105)
