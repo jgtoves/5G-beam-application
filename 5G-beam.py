@@ -45,7 +45,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 
 # --- FULL DASHBOARD LAYOUT ---
 app.layout = html.Div([
-    html.H2("Guam 5G Person-Detection Radar", style={'textAlign': 'center', 'color': '#00ff00'}),
+    html.H2("5G Person-Detection Radar", style={'textAlign': 'center', 'color': '#00ff00'}),
     
     html.Div([
         # LEFT SIDE: COMPASS
@@ -129,3 +129,7 @@ def update_ui(n):
     }
     
     return fig, needle_style, msg, status_style
+
+# NO spaces at the start of these two lines!
+if __name__ == '__main__':
+app.run(host='0.0.0.0', port=5000, debug=True)
