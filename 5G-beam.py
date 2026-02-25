@@ -35,15 +35,27 @@ app = dash.Dash(__name__, server=server)
 
 
 # --- FLASK ROUTE (Receives data from Tasker) ---
-@server.route('/update/', methods=['GET', 'POST'])
+@server.route('/update', methods=['POST', 'GET'])
 def update_signal():
+    print(f"Request received! Method: {request.method}") # This will show in Termux
     global latest_signal
+    
     if request.method == 'POST':
-        content = request.get_json(silent=True)
-        if content and 'rsrp' in content:
-            latest_signal['rsrp'] = int(content['rsrp'])
-            return {"status": "success"}, 200
-    return "Server is alive. Waiting for Tasker...", 200
+        try:
+            content = request.get_json(silent=True)
+            if content and 'rsrp' in content:
+                latest_signal['rsrp'] = int(content['rsrp'])
+                print(f"Success! RSRP updated to: {latest_signal['rsrp']}")
+                return jsonify({"status": "success"}), 200
+            else:
+                print("Error: Received POST but no RSRP data found in JSON")
+                return jsonify({"error": "no data"}), 400
+        except Exception as e:
+            print(f"Error processing JSON: {e}")
+            return jsonify({"error": str(e)}), 500
+            
+    # If someone just visits the link in a browser (GET)
+    return f"Radar Server Active. Current RSRP: {latest_signal['rsrp']}", 200
 
 # --- DASHBOARD LAYOUT ---
 app.layout = html.Div([
