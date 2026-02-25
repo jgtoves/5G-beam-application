@@ -29,7 +29,7 @@ user_location = {"lat": 13.520, "lon": 144.820}
 latest_signal = {"rsrp": -90}
 history_data = []
 
-    server = Flask(__name__)
+server = Flask(__name__)
 CORS(server)
 app = dash.Dash(__name__, server=server)
 
