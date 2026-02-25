@@ -82,6 +82,14 @@ app.layout = html.Div([
     dcc.Interval(id='refresh', interval=500) # Refresh every half-second
 ], style={'backgroundColor': '#111', 'padding': '20px', 'height': '100vh', 'fontFamily': 'sans-serif'})
 
+# added above callback
+def calculate_bearing(lat1, lon1, lat2, lon2):
+    # Math to find the angle between two GPS points
+    dLon = math.radians(lon2 - lon1)
+    y = math.sin(dLon) * math.cos(math.radians(lat2))
+    x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
+        math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(dLon)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
 # --- DASHBOARD CALLBACK (Updates the UI) ---
 @app.callback(
     [Output('status-display', 'children'),
