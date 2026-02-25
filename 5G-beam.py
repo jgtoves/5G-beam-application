@@ -131,4 +131,4 @@ def update_dashboard(n):
     return status_text, status_style, needle_style, fig
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False)
