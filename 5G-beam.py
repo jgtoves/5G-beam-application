@@ -36,15 +36,18 @@ app = dash.Dash(__name__, server=server)
 
 # --- FLASK ROUTE (Receives data from Tasker) ---
 # Change the path to something very unique
-@server.route('/tasker_signal_update', methods=['POST'])
+@server.route('/update', methods=['GET'])
 def update_signal():
     global latest_signal
-    content = request.get_json(silent=True)
-    if content and 'rsrp' in content:
-        latest_signal['rsrp'] = int(content['rsrp'])
-        print(f"✅ DATA IN: {latest_signal['rsrp']}")
-        return {"status": "ok"}, 200
-    return {"status": "error"}, 400
+    # Look for ?rsrp= in the URL
+    val = request.args.get('rsrp')
+    
+    if val:
+        latest_signal['rsrp'] = int(val)
+        print(f"✅ GET DATA RECEIVED: {val}")
+        return f"Updated to {val}", 200
+    
+    return "Missing 'rsrp' parameter", 400
             
 
 # --- DASHBOARD LAYOUT ---
